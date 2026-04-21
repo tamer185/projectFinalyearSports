@@ -1,1 +1,13 @@
-{version: 2, routes: [{src: /admin.html, dest: /admin.html}, {src: /(.*), dest: /}]}
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/admin.html",
+      "dest": "/admin.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

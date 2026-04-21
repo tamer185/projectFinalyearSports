@@ -1,0 +1,1392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lebanon Sports Hub - Interactive Map & Events with Pricing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+        :root {
+            --primary:#ed1c24; --secondary:#00a651; --dark:#1a1a1a;
+            --light:#f5f5f5; --gray:#777; --shadow:0 4px 12px rgba(0,0,0,0.1);
+            --card-shadow:0 6px 15px rgba(0,0,0,0.08); --registered:#4CAF50;
+            --free:#2196F3; --premium:#FF9800;
+        }
+        body { background:#f9f9f9; color:var(--dark); line-height:1.6; }
+        header { background:white; box-shadow:var(--shadow); position:sticky; top:0; z-index:1000; padding:15px 0; }
+        .container { width:90%; max-width:1200px; margin:0 auto; padding:0 15px; }
+        .nav-container { display:flex; justify-content:space-between; align-items:center; }
+        .logo { display:flex; align-items:center; gap:10px; font-size:1.5rem; font-weight:700; color:var(--primary); }
+        .logo i { color:var(--secondary); }
+        .nav-menu { display:flex; list-style:none; gap:25px; }
+        .nav-menu a { text-decoration:none; color:var(--dark); font-weight:600; transition:color 0.3s; }
+        .nav-menu a:hover { color:var(--primary); }
+        .auth-buttons button { padding:8px 20px; border-radius:4px; border:none; font-weight:600; cursor:pointer; transition:all 0.3s; }
+        .sign-in { background:transparent; color:var(--primary); border:2px solid var(--primary)!important; margin-right:10px; }
+        .sign-up { background:var(--primary); color:white; }
+        .auth-buttons button:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+        .hero { background:linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),url('https://images.unsplash.com/photo-1461896836934-ffe607ba8211?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80'); background-size:cover; background-position:center; color:white; padding:80px 0; text-align:center; }
+        .hero h1 { font-size:2.8rem; margin-bottom:20px; }
+        .hero p { font-size:1.2rem; max-width:700px; margin:0 auto 30px; opacity:0.9; }
+        .price-filter { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:30px; }
+        .price-filter-btn { padding:8px 20px; background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:20px; font-weight:600; cursor:pointer; transition:all 0.3s; }
+        .price-filter-btn.active { background:var(--primary); border-color:var(--primary); }
+        .price-filter-btn:hover { background:var(--primary); }
+        .cta-button { background:var(--primary); color:white; padding:15px 40px; border:none; border-radius:30px; font-size:1.1rem; font-weight:600; cursor:pointer; transition:all 0.3s; margin-top:30px; }
+        .cta-button:hover { background:#c5161c; transform:translateY(-3px); box-shadow:0 10px 20px rgba(0,0,0,0.2); }
+        .map-section { background:white; padding:60px 0; margin:40px 0; border-radius:15px; box-shadow:var(--shadow); }
+        .map-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .map-controls { display:flex; gap:10px; }
+        .map-btn { padding:10px 20px; background:var(--light); border:2px solid var(--primary); border-radius:5px; font-weight:600; cursor:pointer; transition:all 0.3s; }
+        .map-btn.active { background:var(--primary); color:white; }
+        #lebanonMap { height:500px; border-radius:10px; margin-bottom:20px; border:1px solid #ddd; }
+        .map-warning { display:none; margin-bottom:20px; padding:15px 20px; border-radius:10px; background:#fff4e5; border:1px solid #f0c36d; color:#6f4a00; font-weight:600; }
+        .map-warning.visible { display:block; }
+        .map-search { display:flex; gap:10px; margin-top:20px; }
+        .map-search input { flex:1; padding:12px 15px; border:1px solid #ddd; border-radius:5px; font-size:1rem; }
+        .map-search button { padding:12px 25px; background:var(--primary); color:white; border:none; border-radius:5px; font-weight:600; cursor:pointer; }
+        .section-title { text-align:center; margin:60px 0 40px; color:var(--dark); font-size:2.2rem; }
+        .filters { display:flex; flex-wrap:wrap; gap:15px; justify-content:center; margin-bottom:40px; }
+        .filter-btn { padding:10px 25px; background:var(--light); border:none; border-radius:30px; font-weight:600; cursor:pointer; transition:all 0.3s; }
+        .filter-btn.active { background:var(--primary); color:white; }
+        .filter-btn:hover { background:var(--secondary); color:white; }
+        .price-tag { display:inline-block; padding:4px 12px; border-radius:15px; font-weight:600; font-size:0.85rem; margin-left:10px; }
+        .price-free { background:var(--free); color:white; }
+        .price-budget { background:#4CAF50; color:white; }
+        .price-moderate { background:var(--premium); color:white; }
+        .price-premium { background:#9C27B0; color:white; }
+        .events-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(350px,1fr)); gap:30px; margin-bottom:60px; }
+        .event-card { background:white; border-radius:15px; overflow:hidden; box-shadow:var(--card-shadow); transition:transform 0.3s,box-shadow 0.3s; }
+        .event-card:hover { transform:translateY(-10px); box-shadow:0 15px 30px rgba(0,0,0,0.15); }
+        .event-card.registered { border-left:5px solid var(--registered); }
+        .event-card.pending-approval { border-left:5px solid #FF9800; }
+        .event-image { height:200px; width:100%; object-fit:cover; }
+        .event-content { padding:25px; }
+        .event-category { display:inline-block; background:var(--secondary); color:white; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:15px; }
+        .event-title { font-size:1.3rem; margin-bottom:10px; color:var(--dark); }
+        .event-meta { display:flex; flex-wrap:wrap; gap:15px; margin-bottom:15px; color:var(--gray); font-size:0.9rem; }
+        .event-meta i { color:var(--primary); margin-right:5px; }
+        .event-price { background:#f8f9fa; padding:10px 15px; border-radius:8px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center; border-left:3px solid var(--primary); }
+        .price-label { font-weight:600; color:var(--dark); }
+        .price-amount { font-size:1.3rem; font-weight:700; color:var(--primary); }
+        .event-description { color:var(--gray); margin-bottom:20px; line-height:1.5; }
+        .event-location { background:#f8f9fa; padding:12px; border-radius:8px; margin-bottom:20px; border-left:3px solid var(--secondary); }
+        .event-location i { color:var(--secondary); margin-right:10px; }
+        .event-actions { display:flex; justify-content:space-between; align-items:center; }
+        .register-btn { background:var(--primary); color:white; border:none; padding:10px 25px; border-radius:5px; font-weight:600; cursor:pointer; transition:background 0.3s; }
+        .register-btn.registered { background:var(--registered); }
+        .register-btn.pending { background:#FF9800; cursor:default; }
+        .register-btn:hover:not(.pending) { background:#c5161c; }
+        .register-btn.registered:hover { background:#388e3c; }
+        .view-map-btn { background:var(--secondary); color:white; border:none; padding:8px 15px; border-radius:5px; font-weight:600; cursor:pointer; font-size:0.9rem; }
+        .view-map-btn:hover { background:#008f47; }
+        .pending-badge { display:inline-flex; align-items:center; gap:5px; background:#FFF3E0; color:#FF9800; padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:10px; border:1px solid #FFB74D; }
+        .my-events { background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%); padding:60px 0; margin:40px 0; border-radius:15px; }
+        .my-events-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:30px; }
+        .events-count { background:var(--primary); color:white; padding:8px 20px; border-radius:20px; font-weight:600; }
+        .registered-events-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:25px; }
+        .registered-card { background:white; border-radius:15px; overflow:hidden; box-shadow:var(--card-shadow); position:relative; border-left:5px solid var(--registered); }
+        .registered-card.pending-card { border-left-color:#FF9800; }
+        .registered-badge { position:absolute; top:15px; right:15px; background:var(--registered); color:white; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:600; }
+        .pending-reg-badge { position:absolute; top:15px; right:15px; background:#FF9800; color:white; padding:5px 15px; border-radius:20px; font-size:0.8rem; font-weight:600; }
+        .registered-actions { display:flex; gap:10px; margin-top:20px; }
+        .cancel-btn { background:#ff6b6b; color:white; border:none; padding:10px 20px; border-radius:5px; font-weight:600; cursor:pointer; flex:1; }
+        .cancel-btn:hover { background:#ff5252; }
+        .directions-btn { background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:5px; font-weight:600; cursor:pointer; flex:1; }
+        .directions-btn:hover { background:#c5161c; }
+        .no-events { text-align:center; padding:60px; color:var(--gray); }
+        .no-events i { font-size:4rem; margin-bottom:20px; color:#ddd; }
+        .chatbot-container { position:fixed; bottom:30px; right:30px; z-index:1000; }
+        .chatbot-btn { width:60px; height:60px; border-radius:50%; background:var(--primary); color:white; border:none; font-size:1.5rem; cursor:pointer; box-shadow:0 5px 15px rgba(237,28,36,0.4); transition:all 0.3s; }
+        .chatbot-btn:hover { transform:scale(1.1); background:#c5161c; }
+        .chatbot-window { position:absolute; bottom:80px; right:0; width:350px; height:450px; background:white; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.2); display:none; flex-direction:column; overflow:hidden; }
+        .chatbot-header { background:var(--primary); color:white; padding:20px; font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+        .chatbot-messages { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
+        .message { max-width:80%; padding:12px 16px; border-radius:18px; line-height:1.4; }
+        .bot-message { background:#f0f2f5; align-self:flex-start; border-bottom-left-radius:5px; }
+        .user-message { background:var(--primary); color:white; align-self:flex-end; border-bottom-right-radius:5px; }
+        .chatbot-input { padding:20px; border-top:1px solid #eee; display:flex; gap:10px; }
+        .chatbot-input input { flex:1; padding:12px 15px; border:1px solid #ddd; border-radius:25px; font-size:0.95rem; }
+        .send-btn { background:var(--primary); color:white; border:none; width:45px; height:45px; border-radius:50%; cursor:pointer; }
+        .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:2000; justify-content:center; align-items:center; }
+        .modal-content { background:white; padding:40px; border-radius:15px; width:90%; max-width:420px; box-shadow:var(--shadow); position:relative; }
+        .modal h2 { margin-bottom:25px; text-align:center; color:var(--dark); }
+        .form-group { margin-bottom:20px; }
+        .form-group label { display:block; margin-bottom:8px; font-weight:600; }
+        .form-group input { width:100%; padding:12px 15px; border:1px solid #ddd; border-radius:5px; font-size:1rem; transition:border-color 0.3s; }
+        .form-group input:focus { outline:none; border-color:var(--primary); }
+        .form-error { color:var(--primary); font-size:0.85rem; margin-top:5px; display:none; }
+        .submit-btn { width:100%; padding:14px; background:var(--primary); color:white; border:none; border-radius:5px; font-weight:600; font-size:1rem; cursor:pointer; margin-top:10px; }
+        .submit-btn:hover { background:#c5161c; }
+        .toggle-auth { text-align:center; margin-top:20px; color:var(--gray); }
+        .toggle-auth span { color:var(--primary); font-weight:600; cursor:pointer; }
+        .close-modal { position:absolute; top:15px; right:20px; font-size:1.5rem; cursor:pointer; color:var(--gray); background:none; border:none; }
+        .user-display { display:flex; align-items:center; gap:8px; }
+        .user-avatar { width:34px; height:34px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem; }
+        .user-name-display { font-weight:600; color:var(--dark); max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        footer { background:var(--dark); color:white; padding:60px 0 30px; }
+        .footer-content { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:40px; margin-bottom:40px; }
+        .footer-section h3 { margin-bottom:20px; color:white; }
+        .social-icons { display:flex; gap:15px; margin-top:20px; }
+        .social-icons a { color:white; font-size:1.2rem; }
+        .copyright { text-align:center; padding-top:30px; border-top:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); }
+        .map-popup { padding:10px; max-width:250px; }
+        .map-popup h3 { color:var(--primary); margin-bottom:10px; font-size:1.1rem; }
+        .map-popup .category { display:inline-block; background:var(--secondary); color:white; padding:3px 10px; border-radius:15px; font-size:0.8rem; margin-bottom:10px; }
+        .map-popup-price { background:#f8f9fa; padding:8px 12px; border-radius:5px; margin:10px 0; font-weight:600; color:var(--primary); }
+        .map-legend { background:white; padding:10px; border-radius:5px; box-shadow:0 0 10px rgba(0,0,0,0.2); font-size:0.8rem; }
+        .legend-item { display:flex; align-items:center; margin-bottom:5px; }
+        .legend-color { width:15px; height:15px; border-radius:50%; margin-right:8px; }
+        .price-stats { display:flex; justify-content:space-around; background:white; padding:20px; border-radius:10px; margin:30px 0; box-shadow:var(--shadow); }
+        .stat-item { text-align:center; }
+        .stat-value { font-size:1.8rem; font-weight:700; color:var(--primary); }
+        .stat-label { color:var(--gray); font-size:0.9rem; }
+        .notification-container { position:fixed; top:20px; right:20px; z-index:3000; display:flex; flex-direction:column; gap:10px; max-width:350px; }
+        .notification { background:white; padding:15px 20px; border-radius:8px; box-shadow:0 5px 15px rgba(0,0,0,0.2); display:flex; align-items:center; gap:15px; transform:translateX(400px); transition:transform 0.3s ease; border-left:4px solid var(--primary); }
+        .notification.show { transform:translateX(0); }
+        .notification.approved { border-left-color:var(--registered); }
+        .notification.rejected { border-left-color:#F44336; }
+        .notification.pending { border-left-color:#FF9800; }
+        .notification.info { border-left-color:#2196F3; }
+        .notification-icon { font-size:1.5rem; }
+        .notification.approved .notification-icon { color:var(--registered); }
+        .notification.rejected .notification-icon { color:#F44336; }
+        .notification.pending .notification-icon { color:#FF9800; }
+        .notification.info .notification-icon { color:#2196F3; }
+        .notification-content { flex:1; }
+        .notification-title { font-weight:600; margin-bottom:5px; }
+        .notification-message { color:var(--gray); font-size:0.9rem; }
+        .close-notification { background:none; border:none; color:var(--gray); cursor:pointer; font-size:1.2rem; }
+        @media(max-width:768px){ .nav-menu{display:none;} .hero h1{font-size:2.2rem;} .events-grid{grid-template-columns:1fr;} .chatbot-window{width:300px;height:400px;right:20px;} .my-events-header{flex-direction:column;gap:15px;align-items:flex-start;} .map-header{flex-direction:column;gap:15px;} .map-controls{flex-wrap:wrap;} #lebanonMap{height:400px;} .price-stats{flex-direction:column;gap:20px;} }
+
+        /* ── DARK MODE ── */
+        body.dark-mode { background:#121212; color:#e0e0e0; }
+        body.dark-mode header { background:#1e1e1e; }
+        body.dark-mode .nav-menu a { color:#e0e0e0; }
+        body.dark-mode .event-card, body.dark-mode .registered-card { background:#1e1e1e; }
+        body.dark-mode .event-price, body.dark-mode .event-location { background:#2a2a2a; }
+        body.dark-mode .map-section { background:#1e1e1e; }
+        body.dark-mode .price-stats { background:#1e1e1e; }
+        body.dark-mode .modal-content { background:#1e1e1e; color:#e0e0e0; }
+        body.dark-mode .form-group input { background:#2a2a2a; border-color:#444; color:#e0e0e0; }
+        body.dark-mode .map-search input { background:#2a2a2a; border-color:#444; color:#e0e0e0; }
+        body.dark-mode .my-events { background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%); }
+        body.dark-mode .chatbot-window { background:#1e1e1e; }
+        body.dark-mode .bot-message { background:#2a2a2a; color:#e0e0e0; }
+        body.dark-mode .chatbot-input input { background:#2a2a2a; border-color:#444; color:#e0e0e0; }
+        body.dark-mode .event-description { color:#aaa; }
+        .dark-toggle { background:transparent; border:2px solid #ddd; border-radius:20px; padding:6px 14px; cursor:pointer; font-size:1rem; transition:all 0.3s; display:flex;align-items:center;gap:6px;font-weight:600;color:var(--dark); }
+        body.dark-mode .dark-toggle { border-color:#555; color:#e0e0e0; }
+        .dark-toggle:hover { border-color:var(--primary); color:var(--primary); }
+
+        /* ── GOOGLE BTN ── */
+        .google-btn { display:flex; align-items:center; justify-content:center; gap:10px; width:100%; padding:12px; border:2px solid #ddd; border-radius:8px; background:white; cursor:pointer; font-weight:600; font-size:0.95rem; color:#333; transition:all 0.3s; margin-bottom:20px; }
+        .google-btn:hover { border-color:#4285f4; box-shadow:0 2px 10px rgba(66,133,244,0.2); transform:translateY(-1px); }
+        .google-btn img { width:20px; height:20px; }
+        .auth-divider { display:flex; align-items:center; gap:15px; margin-bottom:20px; color:var(--gray); font-size:0.9rem; }
+        .auth-divider::before, .auth-divider::after { content:''; flex:1; height:1px; background:#eee; }
+        body.dark-mode .google-btn { background:#2a2a2a; border-color:#444; color:#e0e0e0; }
+        body.dark-mode .auth-divider::before, body.dark-mode .auth-divider::after { background:#444; }
+
+        /* ── LOCATE ME PULSE ── */
+        #locateMe { position:relative; overflow:visible; }
+        #locateMe.locating { background:var(--primary); color:white; border-color:var(--primary); }
+        #locateMe.locating::after { content:''; position:absolute; inset:-4px; border-radius:5px; border:3px solid var(--primary); animation:pulse-ring 1.2s ease-out infinite; }
+        @keyframes pulse-ring { 0%{transform:scale(1);opacity:1} 100%{transform:scale(1.4);opacity:0} }
+
+        /* ── FAVORITES ── */
+        .fav-btn { background:none; border:none; cursor:pointer; font-size:1.3rem; color:#ddd; transition:all 0.3s; padding:4px; line-height:1; }
+        .fav-btn.active { color:#e91e63; animation:heart-pop 0.3s ease; }
+        .fav-btn:hover { transform:scale(1.2); color:#e91e63; }
+        @keyframes heart-pop { 0%{transform:scale(1)} 50%{transform:scale(1.4)} 100%{transform:scale(1)} }
+
+        /* ── SHARE BTN ── */
+        .share-btn { background:none; border:none; cursor:pointer; font-size:1rem; color:var(--gray); transition:all 0.3s; padding:4px 8px; border-radius:4px; }
+        .share-btn:hover { background:var(--light); color:var(--primary); }
+
+        /* ── GOOGLE CALENDAR BTN ── */
+        .gcal-btn { display:inline-flex; align-items:center; gap:6px; background:#4285f4; color:white; border:none; padding:7px 14px; border-radius:5px; font-size:0.82rem; font-weight:600; cursor:pointer; transition:all 0.3s; text-decoration:none; }
+        .gcal-btn:hover { background:#3367d6; transform:translateY(-1px); }
+
+        /* ── LIVE SEARCH ── */
+        .events-search-wrap { position:relative; max-width:500px; margin:0 auto 30px; }
+        .events-search-wrap input { width:100%; padding:13px 45px 13px 20px; border:2px solid #ddd; border-radius:30px; font-size:1rem; transition:all 0.3s; outline:none; }
+        .events-search-wrap input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(237,28,36,0.1); }
+        .events-search-wrap i { position:absolute; right:18px; top:50%; transform:translateY(-50%); color:var(--gray); }
+        body.dark-mode .events-search-wrap input { background:#2a2a2a; border-color:#444; color:#e0e0e0; }
+
+        /* ── COUNTDOWN ── */
+        .event-countdown { display:flex; gap:8px; margin-bottom:15px; }
+        .countdown-block { background:var(--primary); color:white; border-radius:6px; padding:5px 8px; text-align:center; min-width:44px; }
+        .countdown-block .cnt-num { font-size:1.1rem; font-weight:700; display:block; line-height:1; }
+        .countdown-block .cnt-lbl { font-size:0.6rem; opacity:0.85; text-transform:uppercase; }
+        .countdown-wrap { margin-bottom:10px; }
+        .countdown-wrap small { color:var(--gray); font-size:0.8rem; display:block; margin-bottom:6px; }
+
+        /* ── BACK TO TOP ── */
+        #backToTop { position:fixed; bottom:110px; right:30px; width:46px; height:46px; border-radius:50%; background:var(--primary); color:white; border:none; font-size:1.1rem; cursor:pointer; box-shadow:0 3px 12px rgba(237,28,36,0.4); opacity:0; transform:translateY(20px); transition:all 0.3s; z-index:999; }
+        #backToTop.visible { opacity:1; transform:translateY(0); }
+        #backToTop:hover { background:#c5161c; transform:translateY(-3px); }
+
+        /* ── EVENT CARD TOP ROW ── */
+        .card-top-actions { position:absolute; top:15px; right:15px; display:flex; gap:8px; z-index:5; }
+        .event-card { position:relative; }
+    </style>
+</head>
+<body>
+
+<div class="notification-container" id="notificationContainer"></div>
+
+<header>
+    <div class="container">
+        <div class="nav-container">
+            <div class="logo"><i class="fas fa-running"></i><span>Lebanon Sports Hub</span></div>
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#map">Interactive Map</a></li>
+                <li><a href="#my-events">My Events</a></li>
+                <li><a href="#events">All Events</a></li>
+            </ul>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <button class="dark-toggle" id="darkToggle" title="Toggle dark mode">🌙 <span id="darkLabel">Dark</span></button>
+                <div class="auth-buttons" id="authButtons">
+                    <button class="sign-in" id="signInBtn">Sign In</button>
+                    <button class="sign-up" id="signUpBtn">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<section class="hero" id="home">
+    <div class="container">
+        <h1>Discover & Join Sports Events Across Lebanon</h1>
+        <p>Interactive map with real locations. Register for events. Track your participation.</p>
+        <div class="price-filter">
+            <button class="price-filter-btn active" data-price="all">All Prices</button>
+            <button class="price-filter-btn" data-price="free">Free Events</button>
+            <button class="price-filter-btn" data-price="budget">Budget ($1-$20)</button>
+            <button class="price-filter-btn" data-price="moderate">Moderate ($21-$50)</button>
+            <button class="price-filter-btn" data-price="premium">Premium ($51+)</button>
+        </div>
+        <button class="cta-button" id="exploreEvents">View Interactive Map</button>
+    </div>
+</section>
+
+<section class="map-section" id="map">
+    <div class="container">
+        <div class="map-header">
+            <h2 class="section-title" style="margin:0;">Interactive Lebanon Sports Map</h2>
+            <div class="map-controls">
+                <button class="map-btn active" id="showAll">All Events</button>
+                <button class="map-btn" id="showRegistered">My Events</button>
+                <button class="map-btn" id="locateMe"><i class="fas fa-location-arrow"></i> My Location</button>
+            </div>
+        </div>
+        <div id="mapWarning" class="map-warning"></div>
+        <div id="lebanonMap"></div>
+        <div class="map-search">
+            <input type="text" id="mapSearch" placeholder="Search for a city or event in Lebanon...">
+            <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
+        </div>
+    </div>
+</section>
+
+<section class="my-events" id="my-events">
+    <div class="container">
+        <div class="my-events-header">
+            <h2 class="section-title" style="margin:0;">My Registered Events</h2>
+            <div class="events-count" id="eventsCount">0 Events</div>
+        </div>
+        <div class="registered-events-grid" id="registeredEvents">
+            <div class="no-events" id="noEventsMessage">
+                <i class="fas fa-calendar-plus"></i>
+                <h3>No Events Registered Yet</h3>
+                <p>Browse events below and click "Register" to add them here!</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <div class="price-stats">
+        <div class="stat-item"><div class="stat-value" id="freeEventsCount">0</div><div class="stat-label">Free Events</div></div>
+        <div class="stat-item"><div class="stat-value" id="avgPrice">$0</div><div class="stat-label">Average Price</div></div>
+        <div class="stat-item"><div class="stat-value" id="eventsUnder20">0</div><div class="stat-label">Events Under $20</div></div>
+        <div class="stat-item"><div class="stat-value" id="totalValue">$0</div><div class="stat-label">Your Events Value</div></div>
+    </div>
+</div>
+
+<section id="events">
+    <div class="container">
+        <h2 class="section-title">Upcoming Sports Events with Pricing</h2>
+        <div class="events-search-wrap">
+            <input type="text" id="eventSearch" placeholder="🔍  Search events, sports, locations…">
+            <i class="fas fa-search"></i>
+        </div>
+        <div class="filters">
+            <button class="filter-btn active" data-location="all">All Lebanon</button>
+            <button class="filter-btn" data-location="beirut">Beirut</button>
+            <button class="filter-btn" data-location="tripoli">Tripoli</button>
+            <button class="filter-btn" data-location="byblos">Byblos</button>
+            <button class="filter-btn" data-location="sidon">Sidon</button>
+            <button class="filter-btn" data-location="tyre">Tyre</button>
+            <button class="filter-btn" data-location="baalbek">Baalbek</button>
+            <button class="filter-btn" data-location="jounieh">Jounieh</button>
+            <button class="filter-btn" data-location="faraya">Faraya</button>
+        </div>
+        <div class="events-grid" id="eventsGrid"></div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Lebanon Sports Hub</h3>
+                <p>Your gateway to sports events across Lebanon. Find, join, and enjoy!</p>
+                <div class="social-icons">
+                    <a href="#"><i class="fab fa-facebook"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                </div>
+            </div>
+            <div class="footer-section">
+                <h3>Quick Links</h3>
+                <p><a href="#home" style="color:white;">Home</a></p>
+                <p><a href="#map" style="color:white;">Interactive Map</a></p>
+                <p><a href="#my-events" style="color:white;">My Events</a></p>
+                <p><a href="#events" style="color:white;">All Events</a></p>
+            </div>
+            <div class="footer-section">
+                <h3>Contact</h3>
+                <p><i class="fas fa-map-marker-alt"></i> Beirut, Lebanon</p>
+                <p><i class="fas fa-phone"></i> +961 1 234 567</p>
+                <p><i class="fas fa-envelope"></i> info@lebanonsportshub.com</p>
+            </div>
+        </div>
+        <div class="copyright"><p>&copy; 2026 Lebanon Sports Hub. All rights reserved.</p></div>
+    </div>
+</footer>
+
+<!-- Sign In Modal -->
+<div class="modal" id="signInModal">
+    <div class="modal-content">
+        <button class="close-modal" id="closeSignIn">&times;</button>
+        <h2><i class="fas fa-sign-in-alt" style="color:var(--primary);margin-right:8px;"></i>Sign In</h2>
+        <button class="google-btn" id="googleSignInBtn">
+            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Continue with Google
+        </button>
+        <div class="auth-divider">or sign in with email</div>
+        <form id="signInForm" autocomplete="on">
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="loginEmail" placeholder="your@email.com" autocomplete="email" required>
+                <div class="form-error" id="loginEmailError">Please enter a valid email address.</div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
+                <div class="form-error" id="loginPassError">Incorrect email or password.</div>
+            </div>
+            <button type="submit" class="submit-btn">Sign In</button>
+        </form>
+        <p class="toggle-auth">Don't have an account? <span id="showSignUp">Sign Up</span></p>
+    </div>
+</div>
+
+<!-- Sign Up Modal -->
+<div class="modal" id="signUpModal">
+    <div class="modal-content">
+        <button class="close-modal" id="closeSignUp">&times;</button>
+        <h2><i class="fas fa-user-plus" style="color:var(--primary);margin-right:8px;"></i>Create Account</h2>
+        <button class="google-btn" id="googleSignUpBtn">
+            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Continue with Google
+        </button>
+        <div class="auth-divider">or create with email</div>
+        <form id="signUpForm" autocomplete="on">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="signupName" placeholder="Your full name" autocomplete="name" required>
+                <div class="form-error" id="signupNameError">Please enter your name.</div>
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="signupEmail" placeholder="your@email.com" autocomplete="email" required>
+                <div class="form-error" id="signupEmailError">This email is already registered.</div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="signupPassword" placeholder="Min. 6 characters" autocomplete="new-password" required>
+                <div class="form-error" id="signupPassError">Password must be at least 6 characters.</div>
+            </div>
+            <button type="submit" class="submit-btn">Create Account</button>
+        </form>
+        <p class="toggle-auth">Already have an account? <span id="showSignIn">Sign In</span></p>
+    </div>
+</div>
+
+<!-- Google OAuth Simulation Modal -->
+<div class="modal" id="googleModal">
+    <div class="modal-content" style="max-width:380px;text-align:center;">
+        <button class="close-modal" id="closeGoogleModal">&times;</button>
+        <div style="margin-bottom:20px;">
+            <svg width="40" height="40" viewBox="0 0 48 48" style="margin-bottom:10px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            <h2 style="margin-bottom:6px;">Sign in with Google</h2>
+            <p style="color:var(--gray);font-size:0.9rem;">Enter the Google account details you'd like to use</p>
+        </div>
+        <div class="form-group" style="text-align:left;">
+            <label>Full Name</label>
+            <input type="text" id="googleName" placeholder="Your full name" style="width:100%;padding:12px 15px;border:1px solid #ddd;border-radius:5px;font-size:1rem;">
+        </div>
+        <div class="form-group" style="text-align:left;">
+            <label>Gmail Address</label>
+            <input type="email" id="googleEmail" placeholder="yourname@gmail.com" style="width:100%;padding:12px 15px;border:1px solid #ddd;border-radius:5px;font-size:1rem;">
+        </div>
+        <div id="googleError" style="color:var(--primary);font-size:0.85rem;margin-bottom:10px;display:none;">Please fill in all fields with a valid Gmail address.</div>
+        <button onclick="handleGoogleAuth()" style="width:100%;padding:13px;background:#4285f4;color:white;border:none;border-radius:5px;font-weight:700;font-size:1rem;cursor:pointer;transition:background 0.3s;" onmouseover="this.style.background='#3367d6'" onmouseout="this.style.background='#4285f4'">
+            <i class="fas fa-check-circle"></i> Continue
+        </button>
+    </div>
+</div>
+
+<!-- Chatbot -->
+<div class="chatbot-container">
+    <button class="chatbot-btn" id="chatbotBtn"><i class="fas fa-robot"></i></button>
+    <div class="chatbot-window" id="chatbotWindow">
+        <div class="chatbot-header">
+            <span>Sports Assistant</span>
+            <i class="fas fa-times" id="closeChatbot" style="cursor:pointer;"></i>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="message bot-message">Hello! I can help you find events, compare prices, manage registrations, and answer questions!</div>
+        </div>
+        <div class="chatbot-input">
+            <input type="text" id="chatInput" placeholder="Ask about prices, events, or locations...">
+            <button class="send-btn" id="sendChat"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+<button id="backToTop" title="Back to top"><i class="fas fa-chevron-up"></i></button>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ================================================================
+// SPORTS EVENTS DATA
+// ================================================================
+const sportsEvents = [
+    {id:1,title:"Beirut International Marathon",category:"Running",location:"Beirut",date:"Nov 19, 2026",time:"7:00 AM",image:"https://images.unsplash.com/photo-1552674605-db6ffd8facb5?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"The biggest marathon in Lebanon with thousands of participants from around the world. Choose from full marathon, half marathon, or 10K.",registered:2850,capacity:10000,venue:"Martyr's Square",exactLocation:"Starting at Martyr's Square, route through Downtown Beirut",coordinates:[33.8938,35.5018],price:50,priceType:"premium",priceDisplay:"$50"},
+    {id:2,title:"Beirut Basketball Street Tournament",category:"Basketball",location:"Beirut",date:"Dec 5, 2026",time:"2:00 PM",image:"https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"3x3 street basketball tournament featuring local and international teams. Cash prizes for winners.",registered:42,capacity:64,venue:"Zaitunay Bay",exactLocation:"Zaitunay Bay Sports Courts, Beirut Waterfront",coordinates:[33.8959,35.4785],price:20,priceType:"budget",priceDisplay:"$20 per team"},
+    {id:3,title:"Beirut Yoga Festival",category:"Yoga",location:"Beirut",date:"Nov 25, 2026",time:"8:00 AM",image:"https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Day-long yoga festival with multiple sessions, workshops, meditation, and wellness activities.",registered:120,capacity:300,venue:"Horsh Beirut",exactLocation:"Horsh Beirut Public Park",coordinates:[33.8708,35.5089],price:30,priceType:"moderate",priceDisplay:"$30"},
+    {id:4,title:"Beirut Tennis Open",category:"Tennis",location:"Beirut",date:"Dec 10, 2026",time:"9:00 AM",image:"https://images.unsplash.com/photo-1622279457486-62dcc4a431a7?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Annual tennis tournament for amateur and semi-professional players. Multiple categories available.",registered:65,capacity:128,venue:"Beirut Tennis Club",exactLocation:"Beirut Tennis Club, Rawcheh",coordinates:[33.8881,35.4819],price:40,priceType:"moderate",priceDisplay:"$40"},
+    {id:5,title:"Tripoli Football Championship",category:"Football",location:"Tripoli",date:"Dec 10, 2026",time:"4:00 PM",image:"https://images.unsplash.com/photo-1575361204480-aadea25e6e68?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"North Lebanon football championship with teams from across the region. Family-friendly event.",registered:320,capacity:1000,venue:"Tripoli Municipal Stadium",exactLocation:"Al Mina Road, Tripoli",coordinates:[34.4367,35.8497],price:15,priceType:"budget",priceDisplay:"$15"},
+    {id:6,title:"Tripoli Traditional Wrestling",category:"Wrestling",location:"Tripoli",date:"Nov 30, 2026",time:"6:00 PM",image:"https://images.unsplash.com/photo-1533750349088-cd871a92f312?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Traditional Lebanese wrestling competition in Tripoli's old city. Cultural heritage event.",registered:28,capacity:50,venue:"Tripoli Citadel Square",exactLocation:"Tripoli Citadel, Old City",coordinates:[34.4360,35.8439],price:0,priceType:"free",priceDisplay:"FREE"},
+    {id:7,title:"Byblos Coastal Run",category:"Running",location:"Byblos",date:"Nov 25, 2026",time:"6:30 AM",image:"https://images.unsplash.com/photo-1519861531473-920034658307?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Scenic 10K run along the beautiful Byblos coastline. Perfect for beginners and experienced runners.",registered:185,capacity:500,venue:"Byblos Harbor",exactLocation:"Starting at Byblos Fishing Port",coordinates:[34.1191,35.6497],price:25,priceType:"moderate",priceDisplay:"$25"},
+    {id:8,title:"Byblos International Fishing",category:"Fishing",location:"Byblos",date:"Dec 2, 2026",time:"5:00 AM",image:"https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Deep sea fishing competition with prizes for biggest catch. Equipment provided.",registered:45,capacity:60,venue:"Byblos Fishing Port",exactLocation:"Byblos Fishing Port, Main Harbor",coordinates:[34.1210,35.6470],price:100,priceType:"premium",priceDisplay:"$100 per boat"},
+    {id:9,title:"Sidon Beach Volleyball Championship",category:"Volleyball",location:"Sidon",date:"Dec 2, 2026",time:"9:00 AM",image:"https://images.unsplash.com/photo-1592656094267-764a5c1fe1af?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"2-day beach volleyball tournament at Sidon's public beach. Open to amateur and semi-pro teams.",registered:24,capacity:32,venue:"Sidon Public Beach",exactLocation:"Sidon Corniche, Public Beach Area",coordinates:[33.5631,35.3689],price:50,priceType:"moderate",priceDisplay:"$50 per team"},
+    {id:10,title:"Sidon Sea Kayaking Adventure",category:"Kayaking",location:"Sidon",date:"Dec 9, 2026",time:"8:00 AM",image:"https://images.unsplash.com/photo-1506929562872-bb421503ef21?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Guided sea kayaking tour along Sidon's historic coastline. All equipment provided.",registered:18,capacity:30,venue:"Sidon Sea Castle",exactLocation:"Sidon Sea Castle Beach",coordinates:[33.5650,35.3700],price:35,priceType:"moderate",priceDisplay:"$35"},
+    {id:11,title:"Tyre Coastal Triathlon",category:"Triathlon",location:"Tyre",date:"Dec 16, 2026",time:"7:00 AM",image:"https://images.unsplash.com/photo-1560279966-8ff2f6c7407a?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Swim, bike, run along Tyre's beautiful UNESCO coastline. Sprint and Olympic distances available.",registered:95,capacity:200,venue:"Tyre Beach",exactLocation:"Tyre Public Beach, Starting Point",coordinates:[33.2705,35.2031],price:75,priceType:"premium",priceDisplay:"$75"},
+    {id:12,title:"Tyre Traditional Rowing Race",category:"Rowing",location:"Tyre",date:"Dec 3, 2026",time:"10:00 AM",image:"https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Traditional wooden boat rowing competition in Tyre's harbor. Cultural heritage event.",registered:12,capacity:20,venue:"Tyre Fishing Port",exactLocation:"Tyre Fishing Port, South Lebanon",coordinates:[33.2720,35.2050],price:0,priceType:"free",priceDisplay:"FREE to watch"},
+    {id:13,title:"Baalbek Historic Cycling Race",category:"Cycling",location:"Baalbek",date:"Nov 30, 2026",time:"8:30 AM",image:"https://images.unsplash.com/photo-1486428128344-5413e434ad35?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Cycling race through Baalbek's historic Roman temple routes. Choose from 40km or 80km routes.",registered:85,capacity:150,venue:"Baalbek Temples",exactLocation:"Starting at Temple of Jupiter, Baalbek",coordinates:[34.0058,36.2181],price:30,priceType:"moderate",priceDisplay:"$30"},
+    {id:14,title:"Baalbek Horseback Riding Tour",category:"Equestrian",location:"Baalbek",date:"Dec 17, 2026",time:"9:00 AM",image:"https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Guided horseback riding tour through Baalbek's countryside. Suitable for all skill levels.",registered:15,capacity:25,venue:"Baalbek Equestrian Center",exactLocation:"Baalbek Equestrian Center, Bekaa Valley",coordinates:[34.0100,36.2200],price:50,priceType:"moderate",priceDisplay:"$50"},
+    {id:15,title:"Jounieh Paragliding Festival",category:"Air Sports",location:"Jounieh",date:"Dec 3, 2026",time:"10:00 AM",image:"https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Annual paragliding festival with competitions and tandem flights over Jounieh Bay.",registered:45,capacity:80,venue:"Harissa Mountain",exactLocation:"Takeoff from Harissa, Landing at Jounieh Bay",coordinates:[33.9808,35.6175],price:100,priceType:"premium",priceDisplay:"$100"},
+    {id:16,title:"Jounieh Jet Ski Competition",category:"Water Sports",location:"Jounieh",date:"Dec 10, 2026",time:"11:00 AM",image:"https://images.unsplash.com/photo-1519681393784-d120267933ba?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Jet ski racing competition in Jounieh Bay. Multiple speed categories available.",registered:22,capacity:40,venue:"Jounieh Bay",exactLocation:"Jounieh Bay Waterfront",coordinates:[33.9820,35.6150],price:75,priceType:"premium",priceDisplay:"$75"},
+    {id:17,title:"Faraya Ski Championship",category:"Winter Sports",location:"Faraya",date:"Dec 20, 2026",time:"9:00 AM",image:"https://images.unsplash.com/photo-1551632811-561732d1e306?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Ski and snowboard competitions at Lebanon's premier ski resort. Multiple skill levels.",registered:120,capacity:200,venue:"Mzaar Ski Resort",exactLocation:"Mzaar Ski Resort, Faraya",coordinates:[33.9667,35.8667],price:120,priceType:"premium",priceDisplay:"$120"},
+    {id:18,title:"Faraya Snowshoeing Adventure",category:"Hiking",location:"Faraya",date:"Dec 27, 2026",time:"8:00 AM",image:"https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Guided snowshoeing tour through Faraya's winter wonderland. Snowshoes provided.",registered:30,capacity:50,venue:"Mzaar Ski Resort",exactLocation:"Mzaar Ski Resort Base",coordinates:[33.9680,35.8680],price:40,priceType:"moderate",priceDisplay:"$40"},
+    {id:19,title:"Zahle Cycling Marathon",category:"Cycling",location:"Zahle",date:"Dec 23, 2026",time:"7:00 AM",image:"https://images.unsplash.com/photo-1511994717241-8e4e484dfa8f?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"100km cycling marathon through the Bekaa Valley vineyards. Support stations every 20km.",registered:75,capacity:200,venue:"Zahle Main Square",exactLocation:"Starting at Al Midan Square, Zahle",coordinates:[33.8467,35.9020],price:35,priceType:"moderate",priceDisplay:"$35"},
+    {id:20,title:"Batroun Stand-up Paddleboarding",category:"Water Sports",location:"Batroun",date:"Dec 9, 2026",time:"8:00 AM",image:"https://images.unsplash.com/photo-1584696049838-8a4dac5627b0?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Stand-up paddleboarding session along Batroun's rocky coast. Instruction provided for beginners.",registered:25,capacity:40,venue:"Batroun Beach",exactLocation:"Batroun Public Beach",coordinates:[34.2553,35.6578],price:30,priceType:"moderate",priceDisplay:"$30"},
+    {id:21,title:"Community Football - All Ages",category:"Football",location:"Beirut",date:"Every Saturday",time:"3:00 PM",image:"https://images.unsplash.com/photo-1522778119026-d647f0596c20?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Weekly community football for all ages and skill levels. Fun, friendly matches.",registered:45,capacity:100,venue:"Beirut Sports City",exactLocation:"Beirut Sports City Fields",coordinates:[33.8760,35.5200],price:0,priceType:"free",priceDisplay:"FREE"},
+    {id:22,title:"Sunrise Yoga by the Sea",category:"Yoga",location:"Byblos",date:"Every Sunday",time:"6:00 AM",image:"https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",description:"Weekly sunrise yoga sessions overlooking the Mediterranean. Mats provided.",registered:35,capacity:60,venue:"Byblos Cliffside",exactLocation:"Cliffside overlooking Byblos Harbor",coordinates:[34.1250,35.6450],price:10,priceType:"budget",priceDisplay:"$10"}
+];
+
+// Expose events globally so admin panel can read them
+window.sportsEventsData = sportsEvents;
+localStorage.setItem('sportsEvents', JSON.stringify(sportsEvents));
+
+// ================================================================
+// APP STATE
+// ================================================================
+let currentUser = null;
+let registeredEvents = [];
+let currentLocationFilter = 'all';
+let currentPriceFilter = 'all';
+let map = null;
+let markers = [];
+
+// ================================================================
+// AUTH HELPERS
+// ================================================================
+function getUsers(){ return JSON.parse(localStorage.getItem('lsh_users'))||[]; }
+function saveUsers(u){ localStorage.setItem('lsh_users',JSON.stringify(u)); }
+function getUserRegistrations(email){ return JSON.parse(localStorage.getItem('lsh_regs_'+btoa(email)))||[]; }
+function saveUserRegistrations(email,regs){ localStorage.setItem('lsh_regs_'+btoa(email),JSON.stringify(regs)); }
+function setSession(u){ localStorage.setItem('lsh_session',JSON.stringify(u)); }
+function getSession(){ return JSON.parse(localStorage.getItem('lsh_session')); }
+function clearSession(){ localStorage.removeItem('lsh_session'); }
+function hashPassword(pw){ return btoa(pw+'_lsh_salt'); }
+
+function registerUser(name,email,password){
+    const users=getUsers();
+    if(users.find(u=>u.email.toLowerCase()===email.toLowerCase())) return{success:false,error:'email_exists'};
+    users.push({name,email:email.toLowerCase(),password:hashPassword(password)});
+    saveUsers(users);
+    return{success:true};
+}
+function loginUser(email,password){
+    const users=getUsers();
+    const user=users.find(u=>u.email.toLowerCase()===email.toLowerCase()&&u.password===hashPassword(password));
+    if(!user) return{success:false};
+    return{success:true,user:{name:user.name,email:user.email}};
+}
+
+// ================================================================
+// ADMIN INTEGRATION — write registrations to shared localStorage keys
+// ================================================================
+function writeToAdminStorage(eventId, regEntry) {
+    let pending = JSON.parse(localStorage.getItem('pendingRegistrations')) || [];
+    let all = JSON.parse(localStorage.getItem('allRegistrations')) || [];
+
+    const adminReg = {
+        registrationId: regEntry.registrationId,
+        eventId: eventId,
+        userId: currentUser.email,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        registrationDate: new Date().toLocaleString(),
+        status: 'pending'
+    };
+
+    // Remove any old entry for this user+event combo
+    pending = pending.filter(r => !(r.eventId === eventId && r.userId === currentUser.email));
+    all     = all.filter(r => !(r.eventId === eventId && r.userId === currentUser.email));
+
+    pending.push(adminReg);
+    all.push(adminReg);
+
+    localStorage.setItem('pendingRegistrations', JSON.stringify(pending));
+    localStorage.setItem('allRegistrations',     JSON.stringify(all));
+}
+
+function removeFromAdminStorage(eventId) {
+    if (!currentUser) return;
+    let pending = JSON.parse(localStorage.getItem('pendingRegistrations')) || [];
+    let all     = JSON.parse(localStorage.getItem('allRegistrations'))     || [];
+
+    pending = pending.filter(r => !(r.eventId === eventId && r.userId === currentUser.email));
+    // Keep in allRegistrations but mark as cancelled
+    all.forEach(r => {
+        if (r.eventId === eventId && r.userId === currentUser.email) r.status = 'cancelled';
+    });
+
+    localStorage.setItem('pendingRegistrations', JSON.stringify(pending));
+    localStorage.setItem('allRegistrations',     JSON.stringify(all));
+}
+
+// ================================================================
+// NOTIFICATION SYSTEM
+// ================================================================
+function showNotification(type, title, message) {
+    const container = document.getElementById('notificationContainer');
+    const icons = { approved:'fas fa-check-circle', rejected:'fas fa-times-circle', pending:'fas fa-hourglass-half', info:'fas fa-info-circle' };
+    const n = document.createElement('div');
+    n.className = `notification ${type}`;
+    n.innerHTML = `<div class="notification-icon"><i class="${icons[type]||icons.info}"></i></div>
+        <div class="notification-content"><div class="notification-title">${title}</div><div class="notification-message">${message}</div></div>
+        <button class="close-notification" onclick="this.closest('.notification').remove()"><i class="fas fa-times"></i></button>`;
+    container.appendChild(n);
+    setTimeout(()=>n.classList.add('show'),50);
+    setTimeout(()=>{ n.classList.remove('show'); setTimeout(()=>n.remove(),300); },5000);
+}
+
+// ================================================================
+// CHECK REGISTRATION UPDATES FROM ADMIN
+// ================================================================
+function checkRegistrationUpdates() {
+    if (!currentUser) return;
+
+    const notifications = JSON.parse(localStorage.getItem('userNotifications')) || [];
+    const unread = notifications.filter(n => n.userId === currentUser.email && !n.read);
+    if (unread.length === 0) return;
+
+    let changed = false;
+
+    unread.forEach(notif => {
+        const event = sportsEvents.find(e => e.id === notif.eventId);
+        const regIdx = registeredEvents.findIndex(r => r.id === notif.eventId);
+
+        if (notif.status === 'approved') {
+            if (regIdx !== -1) {
+                registeredEvents[regIdx].status = 'approved';
+                changed = true;
+                showNotification('approved', '✅ Registration Approved!', `Your registration for "${event ? event.title : 'an event'}" has been approved by the admin!`);
+            }
+        } else if (notif.status === 'rejected') {
+            if (regIdx !== -1) {
+                registeredEvents.splice(regIdx, 1);
+                changed = true;
+                if (event) event.registered = Math.max(0, event.registered - 1);
+                showNotification('rejected', '❌ Registration Rejected', `Your registration for "${event ? event.title : 'an event'}" was not approved. You may try again.`);
+            }
+        }
+
+        notif.read = true;
+    });
+
+    if (changed) {
+        localStorage.setItem('userNotifications', JSON.stringify(notifications));
+        saveUserRegistrations(currentUser.email, registeredEvents);
+        displayEvents();
+        displayRegisteredEvents();
+        if (map) addAllEventMarkers();
+    } else {
+        // Mark as read even if no local change
+        localStorage.setItem('userNotifications', JSON.stringify(notifications));
+    }
+}
+
+// ================================================================
+// PRICE STATS
+// ================================================================
+function updatePriceStats() {
+    document.getElementById('freeEventsCount').textContent = sportsEvents.filter(e=>e.price===0).length;
+    document.getElementById('avgPrice').textContent = '$'+Math.round(sportsEvents.reduce((s,e)=>s+e.price,0)/sportsEvents.length);
+    document.getElementById('eventsUnder20').textContent = sportsEvents.filter(e=>e.price>0&&e.price<20).length;
+    const regTotal = registeredEvents.reduce((s,r)=>{ const ev=sportsEvents.find(e=>e.id===r.id); return ev?s+ev.price:s; },0);
+    document.getElementById('totalValue').textContent = '$'+regTotal;
+}
+
+// ================================================================
+// MAP
+// ================================================================
+function initMap() {
+    const mapWarning = document.getElementById('mapWarning');
+    if (window.location.protocol === 'file:') {
+        mapWarning.innerHTML = 'OpenStreetMap tiles require a web server. Run via http://localhost:8000';
+        mapWarning.classList.add('visible');
+        return;
+    }
+    map = L.map('lebanonMap').setView([33.8547,35.8623],9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:18
+    }).addTo(map);
+    addAllEventMarkers();
+    addMapLegend();
+}
+
+function addAllEventMarkers() {
+    markers.forEach(m=>map.removeLayer(m));
+    markers=[];
+    const priceColors={free:'#2196F3',budget:'#4CAF50',moderate:'#FF9800',premium:'#9C27B0'};
+    const catIcons={Running:'running',Football:'futbol',Basketball:'basketball-ball',Yoga:'spa',Tennis:'table-tennis',Wrestling:'dumbbell',Fishing:'fish',Volleyball:'volleyball-ball',Kayaking:'ship',Triathlon:'swimmer',Rowing:'water',Cycling:'bicycle',Equestrian:'horse','Air Sports':'parachute-box','Water Sports':'water','Winter Sports':'skiing',Hiking:'hiking'};
+
+    sportsEvents.forEach(event=>{
+        const reg = registeredEvents.find(r=>r.id===event.id);
+        const isReg = !!reg;
+        const isPending = reg && reg.status === 'pending';
+        const color = isPending ? '#FF9800' : (isReg ? '#4CAF50' : (priceColors[event.priceType]||'#2c3e50'));
+        const sz = isReg ? 35 : 30;
+
+        const icon = L.divIcon({
+            html:`<div style="background-color:${color};width:${sz}px;height:${sz}px;border-radius:50%;border:3px solid white;box-shadow:0 2px 5px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:${isReg?16:14}px;position:relative;">
+                <i class="fas fa-${catIcons[event.category]||'map-marker-alt'}"></i>
+                ${isPending?'<div style="position:absolute;top:-5px;right:-5px;background:white;color:#FF9800;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center;font-size:9px;"><i class="fas fa-clock"></i></div>':''}
+                ${isReg&&!isPending?'<div style="position:absolute;top:-5px;right:-5px;background:white;color:#4CAF50;border-radius:50%;width:15px;height:15px;display:flex;align-items:center;justify-content:center;font-size:10px;"><i class="fas fa-check"></i></div>':''}
+            </div>`,
+            className:'custom-marker',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+        });
+
+        const marker = L.marker(event.coordinates,{icon}).addTo(map).bindPopup(createEventPopup(event));
+        marker.on('click',()=>highlightEventCard(event.id));
+        markers.push(marker);
+    });
+}
+
+function createEventPopup(event) {
+    const reg = registeredEvents.find(r=>r.id===event.id);
+    const isReg = !!reg;
+    const isPending = reg && reg.status === 'pending';
+    return `<div class="map-popup">
+        ${isPending?'<div style="background:#FF9800;color:white;padding:5px;border-radius:5px;margin-bottom:10px;text-align:center;font-weight:bold;"><i class="fas fa-clock"></i> Pending Admin Approval</div>':''}
+        ${isReg&&!isPending?'<div style="background:#4CAF50;color:white;padding:5px;border-radius:5px;margin-bottom:10px;text-align:center;font-weight:bold;"><i class="fas fa-check"></i> You are registered</div>':''}
+        <span class="category">${event.category}</span>
+        <h3>${event.title}</h3>
+        <div class="map-popup-price"><i class="fas fa-tag"></i> Price: ${event.price===0?'<strong style="color:#2196F3;">FREE</strong>':'<strong style="color:#e74c3c;">'+event.priceDisplay+'</strong>'}</div>
+        <p><i class="fas fa-calendar-alt"></i> ${event.date} at ${event.time}</p>
+        <p><i class="fas fa-map-marker-alt"></i> ${event.venue}</p>
+        <p><i class="fas fa-users"></i> ${event.registered}/${event.capacity} registered</p>
+        ${!isReg?`<button onclick="registerForEvent(${event.id})" style="background:var(--primary);color:white;border:none;padding:8px;border-radius:4px;width:100%;margin-top:10px;cursor:pointer;">Register Now</button>`:''}
+        ${isPending?`<button onclick="cancelRegistration(${event.id})" style="background:#ff6b6b;color:white;border:none;padding:8px;border-radius:4px;width:100%;margin-top:5px;cursor:pointer;">Cancel Request</button>`:''}
+        <button onclick="centerMapOnEvent(${event.id})" style="background:var(--secondary);color:white;border:none;padding:8px;border-radius:4px;width:100%;margin-top:5px;cursor:pointer;"><i class="fas fa-search"></i> View Details</button>
+    </div>`;
+}
+
+function addMapLegend() {
+    const legend = L.control({position:'bottomright'});
+    legend.onAdd=function(){
+        const div=L.DomUtil.create('div','map-legend');
+        div.innerHTML=`<h4 style="margin-bottom:10px;">Price Categories</h4>
+            <div class="legend-item"><div class="legend-color" style="background:#2196F3;"></div>Free Events</div>
+            <div class="legend-item"><div class="legend-color" style="background:#4CAF50;"></div>Budget ($1-$20)</div>
+            <div class="legend-item"><div class="legend-color" style="background:#FF9800;"></div>Moderate ($21-$50)</div>
+            <div class="legend-item"><div class="legend-color" style="background:#9C27B0;"></div>Premium ($51+)</div>
+            <div class="legend-item"><div class="legend-color" style="background:#FF9800;border:2px dashed white;"></div>Pending Approval</div>`;
+        return div;
+    };
+    legend.addTo(map);
+}
+
+function centerMapOnEvent(eventId) {
+    const event=sportsEvents.find(e=>e.id===eventId);
+    if(!event||!map) return;
+    map.setView(event.coordinates,13);
+    markers.forEach(m=>{ const ll=m.getLatLng(); if(ll.lat===event.coordinates[0]&&ll.lng===event.coordinates[1]) m.openPopup(); });
+    document.getElementById('events').scrollIntoView({behavior:'smooth'});
+    highlightEventCard(eventId);
+}
+
+function highlightEventCard(eventId) {
+    document.querySelectorAll('.event-card').forEach(c=>c.style.boxShadow='var(--card-shadow)');
+    const btn=document.querySelector(`.register-btn[data-id="${eventId}"]`);
+    if(btn){ const card=btn.closest('.event-card'); if(card){ card.style.boxShadow='0 0 0 3px var(--primary),0 15px 30px rgba(0,0,0,0.2)'; card.scrollIntoView({behavior:'smooth',block:'center'}); } }
+}
+
+function showRegisteredOnMap() {
+    markers.forEach(m=>{
+        const ev=sportsEvents.find(e=>e.coordinates[0]===m.getLatLng().lat&&e.coordinates[1]===m.getLatLng().lng);
+        if(ev&&registeredEvents.some(r=>r.id===ev.id)) map.addLayer(m);
+        else map.removeLayer(m);
+    });
+}
+
+// ================================================================
+// DISPLAY EVENTS
+// ================================================================
+function displayEvents() {
+    const grid = document.getElementById('eventsGrid');
+    grid.innerHTML = '';
+
+    let filtered = sportsEvents.slice();
+    if(currentLocationFilter!=='all') filtered=filtered.filter(e=>e.location.toLowerCase()===currentLocationFilter.toLowerCase());
+    switch(currentPriceFilter){
+        case 'free':     filtered=filtered.filter(e=>e.price===0); break;
+        case 'budget':   filtered=filtered.filter(e=>e.price>0&&e.price<=20); break;
+        case 'moderate': filtered=filtered.filter(e=>e.price>20&&e.price<=50); break;
+        case 'premium':  filtered=filtered.filter(e=>e.price>50); break;
+    }
+    // Live search
+    if(searchQuery) {
+        filtered=filtered.filter(e=>
+            e.title.toLowerCase().includes(searchQuery)||
+            e.category.toLowerCase().includes(searchQuery)||
+            e.location.toLowerCase().includes(searchQuery)||
+            e.venue.toLowerCase().includes(searchQuery)||
+            e.description.toLowerCase().includes(searchQuery)
+        );
+    }
+
+    if(filtered.length===0){
+        grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--gray);">
+            <i class="fas fa-search" style="font-size:3rem;margin-bottom:15px;display:block;color:#ddd;"></i>
+            <h3>No events found</h3><p>Try selecting different filters</p></div>`;
+        return;
+    }
+
+    filtered.forEach(event=>{
+        const reg = registeredEvents.find(r=>r.id===event.id);
+        const isReg = !!reg;
+        const isPending = reg && reg.status === 'pending';
+        const isApproved = reg && reg.status === 'approved';
+
+        let priceClass='price-moderate';
+        if(event.price===0) priceClass='price-free';
+        else if(event.price<=20) priceClass='price-budget';
+        else if(event.price>50) priceClass='price-premium';
+
+        let cardClass = 'event-card';
+        if(isPending) cardClass += ' pending-approval';
+        else if(isApproved) cardClass += ' registered';
+
+        let btnClass = 'register-btn';
+        let btnText = 'REGISTER NOW';
+        if(event.registered >= event.capacity && !isReg) { btnText='FULL'; }
+        if(isPending) { btnClass='register-btn pending'; btnText='⏳ PENDING APPROVAL'; }
+        if(isApproved) { btnClass='register-btn registered'; btnText='✅ REGISTERED'; }
+
+        const isFav = favorites.includes(event.id);
+        const card = document.createElement('div');
+        card.className = cardClass;
+        card.innerHTML = `
+            <div class="card-top-actions">
+                <button class="fav-btn ${isFav?'active':''}" data-id="${event.id}" title="${isFav?'Remove from favorites':'Add to favorites'}" onclick="toggleFavorite(${event.id})">
+                    <i class="${isFav?'fas':'far'} fa-heart"></i>
+                </button>
+                <button class="share-btn" title="Share event" onclick="shareEvent(${event.id})">
+                    <i class="fas fa-share-alt"></i>
+                </button>
+            </div>
+            <img src="${event.image}" alt="${event.title}" class="event-image">
+            <div class="event-content">
+                <div style="display:flex;justify-content:space-between;align-items:start;">
+                    <span class="event-category">${event.category}</span>
+                    <span class="price-tag ${priceClass}">${event.price===0?'FREE':event.priceDisplay}</span>
+                </div>
+                ${isPending?'<div class="pending-badge"><i class="fas fa-clock"></i> Awaiting Admin Approval</div>':''}
+                <h3 class="event-title">${event.title}</h3>
+                <div class="event-meta">
+                    <div><i class="fas fa-map-marker-alt"></i> ${event.location}</div>
+                    <div><i class="fas fa-calendar-alt"></i> ${event.date}</div>
+                    <div><i class="fas fa-clock"></i> ${event.time}</div>
+                </div>
+                ${renderCountdown(event)}
+                <div class="event-price">
+                    <div class="price-label">Registration Fee:</div>
+                    <div class="price-amount">${event.price===0?'FREE':event.priceDisplay}</div>
+                </div>
+                <p class="event-description">${event.description}</p>
+                <div class="event-location"><i class="fas fa-map-pin"></i><span>${event.venue}</span></div>
+                <div class="event-actions" style="flex-wrap:wrap;gap:8px;">
+                    <button class="${btnClass}" data-id="${event.id}" ${isPending?'disabled':''}>
+                        ${btnText}
+                    </button>
+                    <button class="view-map-btn" onclick="centerMapOnEvent(${event.id})">
+                        <i class="fas fa-map-marker-alt"></i> Map
+                    </button>
+                    <button class="gcal-btn" onclick="addToGoogleCalendar(${event.id})" title="Add to Google Calendar">
+                        <svg width="14" height="14" viewBox="0 0 48 48" style="display:inline;vertical-align:middle;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                        + Calendar
+                    </button>
+                </div>
+            </div>`;
+        grid.appendChild(card);
+    });
+
+    document.querySelectorAll('.register-btn:not([disabled])').forEach(btn=>{
+        btn.addEventListener('click',function(){
+            const id=parseInt(this.getAttribute('data-id'));
+            if(this.classList.contains('registered')) cancelRegistration(id);
+            else registerForEvent(id);
+        });
+    });
+}
+
+// ================================================================
+// DISPLAY REGISTERED EVENTS
+// ================================================================
+function displayRegisteredEvents() {
+    const container = document.getElementById('registeredEvents');
+    const noMsg = document.getElementById('noEventsMessage');
+    container.innerHTML = '';
+
+    if(registeredEvents.length===0){
+        noMsg.style.display='block';
+        document.getElementById('eventsCount').textContent='0 Events';
+        container.appendChild(noMsg);
+        return;
+    }
+
+    noMsg.style.display='none';
+    document.getElementById('eventsCount').textContent=`${registeredEvents.length} Event${registeredEvents.length!==1?'s':''}`;
+
+    registeredEvents.forEach(reg=>{
+        const event=sportsEvents.find(e=>e.id===reg.id);
+        if(!event) return;
+
+        const isPending = reg.status === 'pending';
+        let priceClass='price-moderate';
+        if(event.price===0) priceClass='price-free';
+        else if(event.price<=20) priceClass='price-budget';
+        else if(event.price>50) priceClass='price-premium';
+
+        const card=document.createElement('div');
+        card.className=`registered-card ${isPending?'pending-card':''}`;
+        card.innerHTML=`
+            ${isPending
+                ? '<div class="pending-reg-badge"><i class="fas fa-clock"></i> Pending Approval</div>'
+                : '<div class="registered-badge"><i class="fas fa-check-circle"></i> Registered</div>'
+            }
+            <img src="${event.image}" alt="${event.title}" class="event-image">
+            <div class="event-content">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-top:8px;">
+                    <span class="event-category">${event.category}</span>
+                    <span class="price-tag ${priceClass}">${event.price===0?'FREE':event.priceDisplay}</span>
+                </div>
+                ${isPending?'<div class="pending-badge" style="margin-top:8px;"><i class="fas fa-clock"></i> Waiting for admin approval</div>':''}
+                <h3 class="event-title">${event.title}</h3>
+                <div class="event-meta">
+                    <div><i class="fas fa-calendar-alt"></i> ${event.date}</div>
+                    <div><i class="fas fa-clock"></i> ${event.time}</div>
+                    <div><i class="fas fa-map-marker-alt"></i> ${event.location}</div>
+                </div>
+                <div class="event-location"><i class="fas fa-map-pin"></i><span>${event.exactLocation}</span></div>
+                <div class="registered-actions">
+                    <button class="directions-btn" onclick="centerMapOnEvent(${event.id})"><i class="fas fa-map-marker-alt"></i> View on Map</button>
+                    <button class="directions-btn" style="background:#4285f4;flex:0 0 auto;padding:10px 12px;" onclick="addToGoogleCalendar(${event.id})" title="Add to Google Calendar"><svg width="14" height="14" viewBox="0 0 48 48" style="vertical-align:middle;"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/></svg></button>
+                    <button class="cancel-btn" onclick="cancelRegistration(${event.id})"><i class="fas fa-times"></i> Cancel</button>
+                </div>
+            </div>`;
+        container.appendChild(card);
+    });
+
+    updatePriceStats();
+}
+
+// ================================================================
+// REGISTER / CANCEL
+// ================================================================
+function registerForEvent(eventId) {
+    if(!currentUser){ showNotification('info','Sign In Required','Please sign in to register for events.'); showModal(document.getElementById('signInModal')); return; }
+
+    const event=sportsEvents.find(e=>e.id===eventId);
+    if(!event) return;
+    if(event.registered>=event.capacity){ showNotification('rejected','Event Full','This event has no more spots available.'); return; }
+    if(registeredEvents.some(r=>r.id===eventId)){ showNotification('info','Already Submitted','You have already submitted a registration for this event.'); return; }
+
+    event.registered++;
+    const registrationId='REG'+Date.now().toString().slice(-6)+Math.random().toString(36).substr(2,4).toUpperCase();
+
+    const regEntry={ id:eventId, registrationId, registrationDate:new Date().toLocaleDateString(), status:'pending' };
+    registeredEvents.push(regEntry);
+    saveUserRegistrations(currentUser.email, registeredEvents);
+
+    // Write to admin's shared localStorage
+    writeToAdminStorage(eventId, regEntry);
+
+    displayEvents();
+    displayRegisteredEvents();
+    if(map) addAllEventMarkers();
+
+    showNotification('pending','Registration Submitted!',`Your request for "${event.title}" is pending admin approval. You'll be notified once reviewed.`);
+    addChatMessage('bot',`Registration submitted for "${event.title}". It's pending admin approval — you'll get a notification once the admin reviews it.`);
+}
+
+function cancelRegistration(eventId) {
+    if(!confirm('Are you sure you want to cancel your registration request?')) return;
+
+    const event=sportsEvents.find(e=>e.id===eventId);
+    if(event) event.registered=Math.max(0,event.registered-1);
+
+    registeredEvents=registeredEvents.filter(r=>r.id!==eventId);
+    saveUserRegistrations(currentUser.email, registeredEvents);
+
+    // Remove from admin storage
+    removeFromAdminStorage(eventId);
+
+    displayEvents();
+    displayRegisteredEvents();
+    if(map) addAllEventMarkers();
+
+    showNotification('info','Registration Cancelled',`Your registration for "${event?event.title:'event'}" has been cancelled.`);
+}
+
+// ================================================================
+// AUTH UI
+// ================================================================
+function updateAuthUI() {
+    const authButtons=document.getElementById('authButtons');
+    if(currentUser){
+        const initials=currentUser.name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        const googleBadge = currentUser.isGoogle
+            ? `<svg width="14" height="14" viewBox="0 0 48 48" style="vertical-align:middle;margin-right:2px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>`
+            : '';
+        authButtons.innerHTML=`<div class="user-display">
+            <div class="user-avatar">${initials}</div>
+            <span class="user-name-display">${googleBadge}${currentUser.name}</span>
+            <button class="sign-in" id="logoutBtn" style="border:2px solid var(--primary)!important;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>`;
+        document.getElementById('logoutBtn').addEventListener('click',handleLogout);
+    } else {
+        authButtons.innerHTML=`<button class="sign-in" id="signInBtn">Sign In</button><button class="sign-up" id="signUpBtn">Sign Up</button>`;
+        document.getElementById('signInBtn').addEventListener('click',()=>showModal(document.getElementById('signInModal')));
+        document.getElementById('signUpBtn').addEventListener('click',()=>showModal(document.getElementById('signUpModal')));
+    }
+}
+
+function handleLogout(){
+    currentUser=null; registeredEvents=[]; clearSession(); updateAuthUI();
+    displayEvents(); displayRegisteredEvents(); if(map) addAllEventMarkers();
+    showNotification('info','Signed Out','You have been logged out successfully.');
+}
+
+// ================================================================
+// MODAL HELPERS
+// ================================================================
+function showModal(modal){ modal.style.display='flex'; }
+function hideModal(modal){ modal.style.display='none'; }
+function showError(id,show){ const el=document.getElementById(id); if(el) el.style.display=show?'block':'none'; }
+
+// ================================================================
+// CHATBOT
+// ================================================================
+function sendChatMessage(){
+    const input=document.getElementById('chatInput');
+    const msg=input.value.trim();
+    if(!msg) return;
+    addChatMessage('user',msg);
+    input.value='';
+    setTimeout(()=>addChatMessage('bot',getChatbotResponse(msg)),500);
+}
+function addChatMessage(sender,text){
+    const msgs=document.getElementById('chatbotMessages');
+    const div=document.createElement('div');
+    div.className=`message ${sender}-message`;
+    div.textContent=text;
+    msgs.appendChild(div);
+    msgs.scrollTop=msgs.scrollHeight;
+}
+function getChatbotResponse(m){
+    const ml=m.toLowerCase();
+    if(ml.includes('hello')||ml.includes('hi')) return `Hello${currentUser?' '+currentUser.name:''}! I can help you find events by price, location, or sport.`;
+    if(ml.includes('pending')) return `Pending registrations are waiting for admin approval. You'll receive a notification once approved or rejected.`;
+    if(ml.includes('price')||ml.includes('cost')){
+        const f=sportsEvents.filter(e=>e.price===0).length,b=sportsEvents.filter(e=>e.price>0&&e.price<=20).length,mod=sportsEvents.filter(e=>e.price>20&&e.price<=50).length,p=sportsEvents.filter(e=>e.price>50).length;
+        return `Price breakdown: ${f} FREE, ${b} budget ($1-$20), ${mod} moderate ($21-$50), ${p} premium ($51+). Use the filters above!`;
+    }
+    if(ml.includes('free')) return `There are ${sportsEvents.filter(e=>e.price===0).length} FREE events. Click "Free Events" filter!`;
+    if(ml.includes('register')) return currentUser?`You have ${registeredEvents.length} registered events (${registeredEvents.filter(r=>r.status==='pending').length} pending approval). Click "Register Now" on any event!`:'Sign in first to register for events.';
+    if(ml.includes('my event')) return `You have ${registeredEvents.length} event${registeredEvents.length!==1?'s':''}, ${registeredEvents.filter(r=>r.status==='pending').length} pending approval.`;
+    return `I'm your sports assistant! Ask me about prices, pending registrations, free activities, or use the filters to browse events.`;
+}
+
+// ================================================================
+// MAP SEARCH
+// ================================================================
+function searchMap(){
+    const q=document.getElementById('mapSearch').value.toLowerCase().trim();
+    if(!q) return;
+    const locs={beirut:[33.8938,35.5018],tripoli:[34.4367,35.8497],byblos:[34.1191,35.6497],jbeil:[34.1191,35.6497],sidon:[33.5631,35.3689],saida:[33.5631,35.3689],tyre:[33.2705,35.2031],baalbek:[34.0058,36.2181],jounieh:[33.9808,35.6175],faraya:[33.9667,35.8667],zahle:[33.8467,35.9020],batroun:[34.2553,35.6578]};
+    if(locs[q]&&map){ map.setView(locs[q],12); addChatMessage('bot',`Showing ${q.charAt(0).toUpperCase()+q.slice(1)} on the map.`); }
+    else addChatMessage('bot',`Try a city name or use the price filters to find events.`);
+}
+
+// ================================================================
+// EVENT LISTENERS
+// ================================================================
+function setupEventListeners(){
+    const signInModal=document.getElementById('signInModal');
+    const signUpModal=document.getElementById('signUpModal');
+
+    document.querySelectorAll('.filter-btn').forEach(btn=>{
+        btn.addEventListener('click',function(){
+            document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+            this.classList.add('active');
+            currentLocationFilter=this.getAttribute('data-location');
+            displayEvents();
+        });
+    });
+
+    document.querySelectorAll('.price-filter-btn').forEach(btn=>{
+        btn.addEventListener('click',function(){
+            document.querySelectorAll('.price-filter-btn').forEach(b=>b.classList.remove('active'));
+            this.classList.add('active');
+            currentPriceFilter=this.getAttribute('data-price');
+            displayEvents();
+            document.getElementById('events').scrollIntoView({behavior:'smooth'});
+        });
+    });
+
+    document.getElementById('showAll').addEventListener('click',function(){ this.classList.add('active'); document.getElementById('showRegistered').classList.remove('active'); if(map) addAllEventMarkers(); });
+    document.getElementById('showRegistered').addEventListener('click',function(){ this.classList.add('active'); document.getElementById('showAll').classList.remove('active'); if(map) showRegisteredOnMap(); });
+    setupLocateMe();
+    document.getElementById('searchBtn').addEventListener('click',searchMap);
+    document.getElementById('mapSearch').addEventListener('keypress',e=>{ if(e.key==='Enter') searchMap(); });
+    document.getElementById('exploreEvents').addEventListener('click',()=>document.getElementById('map').scrollIntoView({behavior:'smooth'}));
+
+    // Sign In
+    document.getElementById('signInForm').addEventListener('submit',function(e){
+        e.preventDefault();
+        const email=document.getElementById('loginEmail').value.trim();
+        const password=document.getElementById('loginPassword').value;
+        showError('loginEmailError',false); showError('loginPassError',false);
+        if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ showError('loginEmailError',true); return; }
+        const result=loginUser(email,password);
+        if(!result.success){ showError('loginPassError',true); return; }
+        currentUser=result.user; registeredEvents=getUserRegistrations(currentUser.email); setSession(currentUser);
+        hideModal(signInModal); updateAuthUI(); displayEvents(); displayRegisteredEvents(); if(map) addAllEventMarkers();
+        showNotification('approved',`Welcome back, ${currentUser.name}!`,'Signed in successfully.');
+        this.reset();
+    });
+
+    // Sign Up
+    document.getElementById('signUpForm').addEventListener('submit',function(e){
+        e.preventDefault();
+        const name=document.getElementById('signupName').value.trim();
+        const email=document.getElementById('signupEmail').value.trim();
+        const password=document.getElementById('signupPassword').value;
+        showError('signupNameError',false); showError('signupEmailError',false); showError('signupPassError',false);
+        if(!name){ showError('signupNameError',true); return; }
+        if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ document.getElementById('signupEmailError').textContent='Please enter a valid email.'; showError('signupEmailError',true); return; }
+        if(password.length<6){ showError('signupPassError',true); return; }
+        const result=registerUser(name,email,password);
+        if(!result.success){ document.getElementById('signupEmailError').textContent='This email is already registered.'; showError('signupEmailError',true); return; }
+        currentUser={name,email:email.toLowerCase()}; registeredEvents=[]; setSession(currentUser);
+        hideModal(signUpModal); updateAuthUI(); displayEvents(); displayRegisteredEvents();
+        showNotification('approved',`Welcome, ${name}!`,'Account created successfully.');
+        this.reset();
+    });
+
+    document.getElementById('closeSignIn').addEventListener('click',()=>hideModal(signInModal));
+    document.getElementById('closeSignUp').addEventListener('click',()=>hideModal(signUpModal));
+    document.getElementById('showSignUp').addEventListener('click',()=>{ hideModal(signInModal); showModal(signUpModal); });
+    document.getElementById('showSignIn').addEventListener('click',()=>{ hideModal(signUpModal); showModal(signInModal); });
+    window.addEventListener('click',e=>{ if(e.target===signInModal) hideModal(signInModal); if(e.target===signUpModal) hideModal(signUpModal); });
+
+    // Chatbot
+    document.getElementById('chatbotBtn').addEventListener('click',()=>{ const w=document.getElementById('chatbotWindow'); w.style.display=w.style.display==='flex'?'none':'flex'; });
+    document.getElementById('closeChatbot').addEventListener('click',()=>{ document.getElementById('chatbotWindow').style.display='none'; });
+    document.getElementById('sendChat').addEventListener('click',sendChatMessage);
+    document.getElementById('chatInput').addEventListener('keypress',e=>{ if(e.key==='Enter') sendChatMessage(); });
+
+    updateAuthUI();
+}
+
+// ================================================================
+// INIT
+// ================================================================
+function initApp(){
+    const session=getSession();
+    if(session){ currentUser=session; registeredEvents=getUserRegistrations(currentUser.email); }
+    initMap();
+    updatePriceStats();
+    displayEvents();
+    displayRegisteredEvents();
+    setupEventListeners();
+    checkRegistrationUpdates();
+    setInterval(checkRegistrationUpdates, 5000);
+    // New features
+    initDarkMode();
+    setupGoogleButtons();
+    setupLiveSearch();
+    setupBackToTop();
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+
+// ================================================================
+// DARK MODE
+// ================================================================
+function initDarkMode() {
+    const saved = localStorage.getItem('lsh_darkMode');
+    if(saved === 'true') { document.body.classList.add('dark-mode'); updateDarkBtn(true); }
+    document.getElementById('darkToggle').addEventListener('click', () => {
+        const on = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('lsh_darkMode', on);
+        updateDarkBtn(on);
+    });
+}
+function updateDarkBtn(on) {
+    const btn = document.getElementById('darkToggle');
+    const lbl = document.getElementById('darkLabel');
+    btn.textContent = ''; 
+    btn.innerHTML = on ? '☀️ <span id="darkLabel">Light</span>' : '🌙 <span id="darkLabel">Dark</span>';
+}
+
+// ================================================================
+// GOOGLE AUTH SIMULATION
+// ================================================================
+function setupGoogleButtons() {
+    document.getElementById('googleSignInBtn').addEventListener('click', () => {
+        hideModal(document.getElementById('signInModal'));
+        showModal(document.getElementById('googleModal'));
+    });
+    document.getElementById('googleSignUpBtn').addEventListener('click', () => {
+        hideModal(document.getElementById('signUpModal'));
+        showModal(document.getElementById('googleModal'));
+    });
+    document.getElementById('closeGoogleModal').addEventListener('click', () => {
+        hideModal(document.getElementById('googleModal'));
+    });
+    window.addEventListener('click', e => {
+        if(e.target === document.getElementById('googleModal')) hideModal(document.getElementById('googleModal'));
+    });
+}
+
+function handleGoogleAuth() {
+    const name = document.getElementById('googleName').value.trim();
+    const email = document.getElementById('googleEmail').value.trim().toLowerCase();
+    const err = document.getElementById('googleError');
+    if(!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.style.display='block'; return; }
+    err.style.display='none';
+    // Register user if not exists
+    const users = getUsers();
+    if(!users.find(u=>u.email===email)) {
+        users.push({name, email, password: hashPassword('google_auth_'+email), isGoogle:true});
+        saveUsers(users);
+    }
+    const u = users.find(u=>u.email===email);
+    currentUser = {name: u.name, email: u.email, isGoogle: true};
+    registeredEvents = getUserRegistrations(currentUser.email);
+    setSession(currentUser);
+    hideModal(document.getElementById('googleModal'));
+    updateAuthUI();
+    displayEvents();
+    displayRegisteredEvents();
+    if(map) addAllEventMarkers();
+    showNotification('approved', `Welcome, ${currentUser.name}! 🎉`, 'Signed in with Google successfully.');
+    document.getElementById('googleName').value='';
+    document.getElementById('googleEmail').value='';
+}
+
+// ================================================================
+// FAVORITES
+// ================================================================
+let favorites = JSON.parse(localStorage.getItem('lsh_favorites') || '[]');
+
+function toggleFavorite(eventId) {
+    const idx = favorites.indexOf(eventId);
+    if(idx === -1) { favorites.push(eventId); showNotification('info','❤️ Added to Favorites','Event saved to your favorites!'); }
+    else { favorites.splice(idx, 1); showNotification('info','💔 Removed from Favorites','Event removed from favorites.'); }
+    localStorage.setItem('lsh_favorites', JSON.stringify(favorites));
+    // Update UI
+    const btn = document.querySelector(`.fav-btn[data-id="${eventId}"]`);
+    if(btn) { btn.classList.toggle('active', favorites.includes(eventId)); btn.title = favorites.includes(eventId)?'Remove from favorites':'Add to favorites'; }
+}
+
+// ================================================================
+// SHARE EVENT
+// ================================================================
+function shareEvent(eventId) {
+    const event = sportsEvents.find(e=>e.id===eventId);
+    if(!event) return;
+    const text = `🏅 ${event.title}\n📅 ${event.date} at ${event.time}\n📍 ${event.venue}, ${event.location}\n💰 ${event.price===0?'FREE':event.priceDisplay}\n\nDiscover sports events in Lebanon at Lebanon Sports Hub!`;
+    if(navigator.share) {
+        navigator.share({title: event.title, text, url: window.location.href}).catch(()=>{});
+    } else {
+        navigator.clipboard.writeText(text).then(()=>showNotification('info','📋 Copied!','Event details copied to clipboard.')).catch(()=>showNotification('info','Share','Copy this: '+text));
+    }
+}
+
+// ================================================================
+// ADD TO GOOGLE CALENDAR
+// ================================================================
+function addToGoogleCalendar(eventId) {
+    const event = sportsEvents.find(e=>e.id===eventId);
+    if(!event) return;
+    // Parse date - format: "Nov 19, 2026" → "20261119"
+    const monthMap = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+    let dateStr = '';
+    try {
+        const parts = event.date.split(' ');
+        if(parts.length >= 3) {
+            const m = monthMap[parts[0]] || '01';
+            const d = parts[1].replace(',','').padStart(2,'0');
+            const y = parts[2];
+            const timeParts = event.time.replace(' AM','').replace(' PM','').split(':');
+            let h = parseInt(timeParts[0]);
+            if(event.time.includes('PM') && h<12) h+=12;
+            if(event.time.includes('AM') && h===12) h=0;
+            const startTime = `${y}${m}${d}T${String(h).padStart(2,'0')}${timeParts[1]||'00'}00`;
+            const endH = String(h+2).padStart(2,'0');
+            const endTime = `${y}${m}${d}T${endH}${timeParts[1]||'00'}00`;
+            dateStr = `${startTime}/${endTime}`;
+        }
+    } catch(e) { dateStr = ''; }
+    const title = encodeURIComponent(event.title);
+    const loc = encodeURIComponent(`${event.venue}, ${event.location}, Lebanon`);
+    const details = encodeURIComponent(`${event.description}\n\nPrice: ${event.price===0?'FREE':event.priceDisplay}\nCapacity: ${event.capacity}`);
+    const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}&location=${loc}&details=${details}`;
+    window.open(url, '_blank');
+}
+
+// ================================================================
+// COUNTDOWN TIMER
+// ================================================================
+function getCountdown(dateStr) {
+    const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+    try {
+        const parts = dateStr.split(' ');
+        if(parts[0]==='Every') return null;
+        const m = monthMap[parts[0]];
+        const d = parseInt(parts[1]);
+        const y = parseInt(parts[2]);
+        const target = new Date(y, m, d);
+        const now = new Date();
+        const diff = target - now;
+        if(diff <= 0) return null;
+        const days = Math.floor(diff/(1000*60*60*24));
+        const hours = Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+        const mins = Math.floor((diff%(1000*60*60))/(1000*60));
+        return {days, hours, mins};
+    } catch(e) { return null; }
+}
+
+function renderCountdown(event) {
+    const cd = getCountdown(event.date);
+    if(!cd) return '';
+    return `<div class="countdown-wrap">
+        <small><i class="fas fa-hourglass-half" style="color:var(--primary);"></i> Event starts in:</small>
+        <div class="event-countdown">
+            <div class="countdown-block"><span class="cnt-num">${cd.days}</span><span class="cnt-lbl">Days</span></div>
+            <div class="countdown-block" style="background:#FF9800;"><span class="cnt-num">${cd.hours}</span><span class="cnt-lbl">Hrs</span></div>
+            <div class="countdown-block" style="background:#4CAF50;"><span class="cnt-num">${cd.mins}</span><span class="cnt-lbl">Min</span></div>
+        </div>
+    </div>`;
+}
+
+// ================================================================
+// LIVE SEARCH
+// ================================================================
+let searchQuery = '';
+function setupLiveSearch() {
+    const input = document.getElementById('eventSearch');
+    if(!input) return;
+    input.addEventListener('input', function() {
+        searchQuery = this.value.toLowerCase().trim();
+        displayEvents();
+    });
+}
+
+// ================================================================
+// BACK TO TOP
+// ================================================================
+function setupBackToTop() {
+    const btn = document.getElementById('backToTop');
+    window.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', window.scrollY > 400);
+    });
+    btn.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+}
+
+// ================================================================
+// ENHANCED MY LOCATION BUTTON
+// ================================================================
+function setupLocateMe() {
+    const btn = document.getElementById('locateMe');
+    btn.addEventListener('click', function() {
+        if(!map) return;
+        this.classList.add('locating');
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating…';
+        if(navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    map.setView([pos.coords.latitude, pos.coords.longitude], 12);
+                    L.circle([pos.coords.latitude, pos.coords.longitude], {radius:500, color:'#ed1c24', fillOpacity:0.15}).addTo(map);
+                    L.marker([pos.coords.latitude, pos.coords.longitude], {
+                        icon: L.divIcon({html:'<div style="background:#ed1c24;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',className:'',iconSize:[18,18],iconAnchor:[9,9]})
+                    }).addTo(map).bindPopup('<b>📍 You are here</b>').openPopup();
+                    addChatMessage('bot','📍 Found your location! Showing nearby events on the map.');
+                    showNotification('approved','📍 Location Found','Your location is now shown on the map!');
+                    btn.classList.remove('locating');
+                    btn.innerHTML='<i class="fas fa-location-arrow"></i> My Location';
+                },
+                () => {
+                    showNotification('rejected','Location Error','Unable to get your location. Please allow location access.');
+                    btn.classList.remove('locating');
+                    btn.innerHTML='<i class="fas fa-location-arrow"></i> My Location';
+                }
+            );
+        } else {
+            showNotification('rejected','Not Supported','Geolocation is not supported by your browser.');
+            btn.classList.remove('locating');
+            btn.innerHTML='<i class="fas fa-location-arrow"></i> My Location';
+        }
+    });
+}
+
+</script>
+</body>
+</html>
